@@ -1,57 +1,73 @@
 local WaterLib = {}
 WaterLib.__index = WaterLib
 
+local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Stats = game:GetService("Stats")
 
 function WaterLib.new()
     local self = setmetatable({}, WaterLib)
+    
     self.Visible = false
-    self.Settings = {Blur = true, ShowHUD = true}
-    self.ActiveModules = {}
+    self.Settings = {ShowHUD = true}
+    
+    -- Haupt-Menü Fenster
+    self.Menu = Drawing.new("Square")
+    self.Menu.Size = Vector2.new(400, 300)
+    self.Menu.Position = Vector2.new(200, 200)
+    self.Menu.Color = Color3.fromRGB(30, 30, 30)
+    self.Menu.Visible = false
+    
+    -- HUD Text (FPS/Ping/Pos)
+    self.HUD = Drawing.new("Text")
+    self.HUD.Visible = true
+    self.HUD.Position = Vector2.new(10, 10)
+    
+    -- Dragging Variablen
+    self.Dragging = false
+    self.DragOffset = Vector2.new(0, 0)
 
-    -- HUD Elemente (Drawing)
-    self.HUDText = Drawing.new("Text")
-    self.HUDText.Size = 18
-    self.HUDText.Position = Vector2.new(10, 10)
-    self.HUDText.Color = Color3.fromRGB(255, 255, 255)
-    self.HUDText.Visible = true
-    self.HUDText.Font = 2
-
-    self:StartLoop()
-    self:SetupInputs()
+    self:SetupEvents()
     return self
 end
 
-function WaterLib:SetupInputs()
-    UserInputService.InputBegan:Connect(function(input, gpe)
+function WaterLib:SetupEvents()
+    -- Input: Toggle Menu (RightShift)
+    UIS.InputBegan:Connect(function(input, gpe)
         if gpe then return end
         if input.KeyCode == Enum.KeyCode.RightShift then
             self.Visible = not self.Visible
-            -- Hier logik für Menü-Sichtbarkeit einbauen
-        end
-    end)
-end
-
-function WaterLib:StartLoop()
-    RunService.RenderStepped:Connect(function()
-        if self.Settings.ShowHUD then
-            local fps = math.round(1 / RunService.RenderStepped:Wait())
-            local ping = math.round(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-            local pos = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character.HumanoidRootPart.Position
+            self.Menu.Visible = self.Visible
             
-            self.HUDText.Text = string.format("FPS: %d | Ping: %dms | Pos: %d, %d, %d", 
-                fps, ping, pos.X, pos.Y, pos.Z)
-        else
-            self.HUDText.Visible = false
+            -- HUD Logik: Wenn Menü offen, HUD aus. Wenn Menü zu, HUD an (wenn Setting aktiv)
+            if self.Settings.ShowHUD then
+                self.HUD.Visible = not self.Visible
+            end
         end
     end)
-end
 
-function WaterLib:ToggleHUD(state)
-    self.Settings.ShowHUD = state
-    self.HUDText.Visible = state
+    -- Dragging Logik
+    UIS.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local mPos = UIS:GetMouseLocation()
+            if mPos.X >= self.Menu.Position.X and mPos.X <= self.Menu.Position.X + self.Menu.Size.X and
+               mPos.Y >= self.Menu.Position.Y and mPos.Y <= self.Menu.Position.Y + 25 then
+                self.Dragging = true
+                self.DragOffset = mPos - self.Menu.Position
+            end
+        end
+    end)
+
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self.Dragging = false
+        end
+    end)
+
+    RunService.RenderStepped:Connect(function()
+        if self.Dragging then
+            self.Menu.Position = UIS:GetMouseLocation() - self.DragOffset
+        end
+    end)
 end
 
 return WaterLib
