@@ -1,9 +1,11 @@
+local expectedV = 0_0_0_2
+
 print("-------------------------------")
 print("         water client          ")
-print("         v0.0.0.1(dev)         ")
+print("         v0.0.0.2(dev)         ")
 print("-------------------------------")
 
-if expectedV == 0_0_0_1 then
+if expectedV == 0_0_0_2 then
     print("up to date!!")
     print("(:")
 else
@@ -16,6 +18,7 @@ WaterLib.__index = WaterLib
 
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
 
 function WaterLib.new()
     local self = setmetatable({}, WaterLib)
@@ -23,64 +26,54 @@ function WaterLib.new()
     self.Visible = false
     self.Settings = {ShowHUD = true}
     
-    -- Haupt-Menü Fenster
+    -- UI Elemente
     self.Menu = Drawing.new("Square")
     self.Menu.Size = Vector2.new(400, 300)
     self.Menu.Position = Vector2.new(200, 200)
     self.Menu.Color = Color3.fromRGB(30, 30, 30)
     self.Menu.Visible = false
     
-    -- HUD Text (FPS/Ping/Pos)
     self.HUD = Drawing.new("Text")
-    self.HUD.Visible = true
+    self.HUD.Size = 18
     self.HUD.Position = Vector2.new(10, 10)
-    
-    -- Dragging Variablen
-    self.Dragging = false
-    self.DragOffset = Vector2.new(0, 0)
+    self.HUD.Color = Color3.fromRGB(255, 255, 255)
+    self.HUD.Visible = true
+    self.HUD.Font = 2
 
     self:SetupEvents()
+    self:StartLoop()
+    
     return self
 end
 
 function WaterLib:SetupEvents()
-    -- Input: Toggle Menu (RightShift)
     UIS.InputBegan:Connect(function(input, gpe)
-        if gpe then return end
         if input.KeyCode == Enum.KeyCode.RightShift then
             self.Visible = not self.Visible
             self.Menu.Visible = self.Visible
             
-            -- HUD Logik: Wenn Menü offen, HUD aus. Wenn Menü zu, HUD an (wenn Setting aktiv)
+            -- HUD Logik: Sichtbar, wenn Menü zu UND Settings auf an
             if self.Settings.ShowHUD then
                 self.HUD.Visible = not self.Visible
             end
         end
     end)
+end
 
-    -- Dragging Logik
-    UIS.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local mPos = UIS:GetMouseLocation()
-            if mPos.X >= self.Menu.Position.X and mPos.X <= self.Menu.Position.X + self.Menu.Size.X and
-               mPos.Y >= self.Menu.Position.Y and mPos.Y <= self.Menu.Position.Y + 25 then
-                self.Dragging = true
-                self.DragOffset = mPos - self.Menu.Position
-            end
-        end
-    end)
-
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            self.Dragging = false
-        end
-    end)
-
+function WaterLib:StartLoop()
     RunService.RenderStepped:Connect(function()
-        if self.Dragging then
-            self.Menu.Position = UIS:GetMouseLocation() - self.DragOffset
+        if self.Settings.ShowHUD and not self.Visible then
+            local fps = math.round(1 / RunService.RenderStepped:Wait())
+            local ping = math.round(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+            local char = game.Players.LocalPlayer.Character
+            local pos = char and char.HumanoidRootPart.Position or Vector3.new(0,0,0)
+            
+            self.HUD.Text = string.format("FPS: %d | Ping: %dms | Pos: %d, %d, %d", 
+                fps, ping, math.floor(pos.X), math.floor(pos.Y), math.floor(pos.Z))
         end
     end)
 end
 
 return WaterLib
+
+
