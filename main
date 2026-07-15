@@ -1,0 +1,57 @@
+local WaterLib = {}
+WaterLib.__index = WaterLib
+
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Stats = game:GetService("Stats")
+
+function WaterLib.new()
+    local self = setmetatable({}, WaterLib)
+    self.Visible = false
+    self.Settings = {Blur = true, ShowHUD = true}
+    self.ActiveModules = {}
+
+    -- HUD Elemente (Drawing)
+    self.HUDText = Drawing.new("Text")
+    self.HUDText.Size = 18
+    self.HUDText.Position = Vector2.new(10, 10)
+    self.HUDText.Color = Color3.fromRGB(255, 255, 255)
+    self.HUDText.Visible = true
+    self.HUDText.Font = 2
+
+    self:StartLoop()
+    self:SetupInputs()
+    return self
+end
+
+function WaterLib:SetupInputs()
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.KeyCode == Enum.KeyCode.RightShift then
+            self.Visible = not self.Visible
+            -- Hier logik für Menü-Sichtbarkeit einbauen
+        end
+    end)
+end
+
+function WaterLib:StartLoop()
+    RunService.RenderStepped:Connect(function()
+        if self.Settings.ShowHUD then
+            local fps = math.round(1 / RunService.RenderStepped:Wait())
+            local ping = math.round(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+            local pos = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character.HumanoidRootPart.Position
+            
+            self.HUDText.Text = string.format("FPS: %d | Ping: %dms | Pos: %d, %d, %d", 
+                fps, ping, pos.X, pos.Y, pos.Z)
+        else
+            self.HUDText.Visible = false
+        end
+    end)
+end
+
+function WaterLib:ToggleHUD(state)
+    self.Settings.ShowHUD = state
+    self.HUDText.Visible = state
+end
+
+return WaterLib
